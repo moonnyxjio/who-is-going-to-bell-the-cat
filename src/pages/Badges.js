@@ -2,8 +2,8 @@
 import React, { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { QUESTIONS } from "../data";
+import { isAdminSession } from "../auth";
 
-// mastery_v1 불러오기
 const MASTER_KEY = "mastery_v1";
 const loadMastery = () => {
   try {
@@ -15,14 +15,37 @@ const loadMastery = () => {
 
 export default function Badges() {
   const nav = useNavigate();
+
+  // ✅ 항상 최상위에서 실행
   const mastery = useMemo(() => loadMastery(), []);
   const students = Object.keys(mastery);
-
-  // Day 리스트 (data.js 기반)
   const days = Object.keys(QUESTIONS || {}).sort(
-    (a, b) =>
-      parseInt(a.replace(/\D/g, "")) - parseInt(b.replace(/\D/g, ""))
+    (a, b) => parseInt(a.replace(/\D/g, "")) - parseInt(b.replace(/\D/g, ""))
   );
+
+  // ✅ 조건부 렌더링만 사용
+  if (!isAdminSession()) {
+    return (
+      <div className="container">
+        <div className="card">
+          <h2>관리자 전용 페이지</h2>
+          <p className="muted">
+            접근 권한이 없습니다. 먼저 관리자 로그인을 해주세요.
+          </p>
+          <div className="nav">
+            <button
+              className="btn"
+              onClick={() =>
+                nav("/admin", { state: { from: "/badges" } })
+              }
+            >
+              관리자 로그인
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const badgeStyle = (done) => ({
     padding: "6px 12px",
@@ -54,13 +77,7 @@ export default function Badges() {
                 }}
               >
                 <div style={{ fontWeight: 800, marginBottom: 10 }}>{name}</div>
-                <div
-                  style={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: 10,
-                  }}
-                >
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
                   {days.map((day) => {
                     const total = (QUESTIONS[day] || []).length;
                     const mastered = mastery[name]?.[day]?.length || 0;
@@ -79,9 +96,13 @@ export default function Badges() {
             ))}
           </div>
         )}
+
         <div className="nav" style={{ marginTop: 16 }}>
           <button className="btn" onClick={() => nav("/")}>
             처음으로
+          </button>
+          <button className="btn" onClick={() => nav("/records")}>
+            기록 보기
           </button>
         </div>
       </div>

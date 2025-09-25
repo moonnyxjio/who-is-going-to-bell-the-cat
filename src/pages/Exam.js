@@ -17,9 +17,15 @@ export default function Exam() {
   const list = useMemo(() => QUESTIONS[day] || [], [day]);
   const q = list[idx];
 
-  if (!q) return <div className="container"><h2>시험 문제가 없어요.</h2></div>;
+  if (!q) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <h2 className="text-lg font-semibold text-gray-700">시험 문제가 없어요.</h2>
+      </div>
+    );
+  }
 
-  // SpeechRecognition 연결
+  // SpeechRecognition
   const startSpeech = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
@@ -36,7 +42,7 @@ export default function Exam() {
     recog.start();
   };
 
-  // 자동 채점
+  // 채점
   const checkAnswer = (text) => {
     const userTokens = tokenize(text);
     const expectedTokens = tokenize(q.enChunks.join(" "));
@@ -45,7 +51,7 @@ export default function Exam() {
     expectedTokens.forEach((exp, i) => {
       const user = userTokens[i] || "";
       if (user === exp) return;
-      if (user + "s" === exp || user === exp + "s") return; // 복수형 허용
+      if (user + "s" === exp || user === exp + "s") return;
       wrongIdxs.push(i);
     });
 
@@ -63,35 +69,57 @@ export default function Exam() {
   };
 
   return (
-    <div className="container">
-      <div className="card">
-        <h1 className="title">Day {day} 시험 {idx + 1}/{list.length}</h1>
-        <p className="yellow">{q.koChunks.join(" / ")}</p>
+    <div className="min-h-screen bg-gradient-to-br from-red-600 to-orange-500 flex items-center justify-center p-6">
+      <div className="bg-white/95 backdrop-blur-lg shadow-xl rounded-2xl w-full max-w-2xl p-8">
+        {/* 제목 */}
+        <h1 className="text-2xl font-bold text-center text-gray-800 mb-6">
+          Day {day} 시험 {idx + 1} / {list.length}
+        </h1>
 
-        <div className="nav">
-          <button className="btn primary" onClick={startSpeech}>🎤 말하기</button>
+        {/* 문제 (한글만 보여줌) */}
+        <div className="bg-yellow-100 text-yellow-900 font-semibold text-lg text-center py-3 px-4 rounded-lg mb-6 shadow-inner">
+          {q.koChunks.join(" / ")}
         </div>
 
+        {/* 말하기 버튼 */}
+        <div className="flex justify-center mb-6">
+          <button
+            className="px-8 py-4 text-lg font-bold rounded-full bg-gradient-to-r from-red-500 to-orange-500 text-white shadow-lg hover:opacity-90 transition"
+            onClick={startSpeech}
+          >
+            🎤 말하기
+          </button>
+        </div>
+
+        {/* 결과 */}
         {spoken && (
-          <div style={{ marginTop: 16 }}>
-            <p>👉 인식된 문장: <b>{spoken}</b></p>
-            <p>
+          <div className="space-y-4">
+            <p className="text-gray-700 text-center">
+              👉 인식된 문장: <span className="font-semibold">{spoken}</span>
+            </p>
+            <div className="flex flex-wrap justify-center gap-2 text-lg font-bold">
               {result?.expected.map((word, i) => (
                 <span
                   key={i}
-                  style={{
-                    color: result.wrongIdxs.includes(i) ? "red" : "lime",
-                    marginRight: 4,
-                    fontWeight: 600,
-                  }}
+                  className={`px-2 py-1 rounded ${
+                    result.wrongIdxs.includes(i)
+                      ? "bg-red-200 text-red-700"
+                      : "bg-green-200 text-green-700"
+                  }`}
                 >
                   {word}
                 </span>
               ))}
-            </p>
-            <button className="btn" onClick={handleNext}>
-              {idx < list.length - 1 ? "다음 문제" : "시험 끝내기"}
-            </button>
+            </div>
+
+            <div className="flex justify-center mt-6">
+              <button
+                className="px-6 py-3 rounded-lg bg-gray-800 text-white font-semibold shadow hover:bg-gray-900 transition"
+                onClick={handleNext}
+              >
+                {idx < list.length - 1 ? "다음 문제" : "시험 끝내기"}
+              </button>
+            </div>
           </div>
         )}
       </div>

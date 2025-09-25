@@ -1,74 +1,89 @@
-// src/pages/Start.js
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { isAdminSession } from "../auth";
-import { getStudentName } from "../auth";
 
 export default function Start() {
+  const [name, setName] = useState("");
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const nav = useNavigate();
-  const [name, setName] = useState(() => getStudentName() || "");
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [admin, setAdmin] = useState(false);
 
-  useEffect(() => setAdmin(isAdminSession()), []);
-
-  const goLearn = (day) => {
+  const handleStart = (day) => {
     if (!name.trim()) {
-      alert("학생 이름을 입력해 주세요.");
+      alert("이름을 입력하세요!");
       return;
     }
-    nav(`/learn/${day}`, { state: { name, date, day } });
+    nav(`/lesson/${day}`, { state: { name, date } });
   };
 
   return (
-    <div className="container">
-      <div className="card" style={{ width: "100%", maxWidth: 640 }}>
-        <h1 className="title">Who’s going to bell the cat?</h1>
-        <p className="subtitle">말하기 학습 → 시험 · 오답 재시험 · 뱃지</p>
+    <div className="min-h-screen bg-gradient-to-br from-red-600 to-orange-500 flex items-center justify-center p-6">
+      <div className="bg-white/95 backdrop-blur-lg shadow-xl rounded-2xl w-full max-w-lg p-8">
+        <h1 className="text-2xl font-bold text-center text-gray-800 mb-6">
+          🎤 말하기 학습 & 시험
+        </h1>
 
-        <div style={{ display: "grid", gap: 12, marginTop: 12 }}>
+        {/* 이름 입력 */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            이름
+          </label>
           <input
             type="text"
-            placeholder="학생 이름"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            style={{
-              padding: 12,
-              borderRadius: 10,
-              border: "1px solid #2e2e2e",
-              background: "transparent",
-              color: "#fff",
-            }}
+            placeholder="학생 이름을 입력하세요"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-red-400 focus:outline-none"
           />
+        </div>
+
+        {/* 날짜 입력 */}
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            날짜
+          </label>
           <input
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            style={{
-              padding: 12,
-              borderRadius: 10,
-              border: "1px solid #2e2e2e",
-              background: "transparent",
-              color: "#fff",
-            }}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-red-400 focus:outline-none"
           />
         </div>
 
-        <div className="nav" style={{ marginTop: 16, flexWrap: "wrap", gap: 8 }}>
-          <button className="btn primary" onClick={() => goLearn("day1")}>Day 1 시작</button>
-          <button className="btn primary" onClick={() => goLearn("day2")}>Day 2 시작</button>
-          <button className="btn primary" onClick={() => goLearn("day3")}>Day 3 시작</button>
-          <button className="btn primary" onClick={() => goLearn("day4")}>Day 4 시작</button>
+        {/* Day 선택 */}
+        <h3 className="text-lg font-semibold text-gray-800 mb-3 text-center">
+          Day 선택
+        </h3>
+        <div className="grid grid-cols-2 gap-3 mb-6">
+          {["day1", "day2", "day3", "day4"].map((day, i) => (
+            <button
+              key={day}
+              className="w-full py-3 rounded-xl font-bold text-white bg-gradient-to-r from-red-500 to-orange-500 shadow-md hover:opacity-90 transition"
+              onClick={() => handleStart(day)}
+            >
+              Day {i + 1}
+            </button>
+          ))}
         </div>
 
-        <div className="nav" style={{ marginTop: 8, flexWrap: "wrap", gap: 8 }}>
-          {/* 관리자 페이지 버튼은 관리자 로그인시에만 노출 */}
-          {admin && <button className="btn" onClick={() => nav("/records")}>기록 보기</button>}
-          {admin && <button className="btn" onClick={() => nav("/badges")}>뱃지 보관함</button>}
-
-          {/* 학생 마이페이지 진입용 */}
-          <button className="btn" onClick={() => nav("/student")}>학생 로그인</button>
-          <button className="btn" onClick={() => nav("/admin")}>관리자 로그인</button>
+        {/* 네비게이션 */}
+        <div className="flex flex-col gap-3">
+          <button
+            className="w-full py-3 rounded-xl font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 transition"
+            onClick={() => nav("/records")}
+          >
+            기록 보기
+          </button>
+          <button
+            className="w-full py-3 rounded-xl font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 transition"
+            onClick={() => nav("/badges")}
+          >
+            뱃지 보관함
+          </button>
+          <button
+            className="w-full py-3 rounded-xl font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 transition"
+            onClick={() => nav("/admin")}
+          >
+            관리자 로그인
+          </button>
         </div>
       </div>
     </div>

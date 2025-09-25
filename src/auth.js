@@ -1,17 +1,18 @@
 // src/auth.js
-export const ADMIN_PIN = "2468";
+const ADMIN_PIN = "jchi"; // 👉 네가 원하는 PIN으로 바꿔
 
-// ------- Admin session -------
-export const isAdminSession = () => sessionStorage.getItem("admin_ok") === "1";
-export const setAdminSession = (ok) => {
-  if (ok) sessionStorage.setItem("admin_ok", "1");
-  else sessionStorage.removeItem("admin_ok");
-};
+export function loginAdmin(pin) {
+  if (pin === ADMIN_PIN) {
+    localStorage.setItem("isAdmin", "true");
+    return true;
+  }
+  return false;
+}
 
-// ------- Student session -------
-const STUDENT_KEY = "student_name";
-export const getStudentName = () => sessionStorage.getItem(STUDENT_KEY) || "";
-export const setStudentName = (name) => {
-  if (name?.trim()) sessionStorage.setItem(STUDENT_KEY, name.trim());
-};
-export const clearStudentName = () => sessionStorage.removeItem(STUDENT_KEY);
+export function logoutAdmin() {
+  localStorage.removeItem("isAdmin");
+}
+
+export function isAdminSession() {
+  return localStorage.getItem("isAdmin") === "true";
+}

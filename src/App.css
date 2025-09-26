@@ -1,38 +1,154 @@
-.App {
-  text-align: center;
+/* 기본 레이아웃 */
+body {
+  margin: 0;
+  font-family: "Noto Sans KR", sans-serif;
+  background: linear-gradient(to bottom, #0f172a, #111827);
+  color: #fff;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
+.app {
   min-height: 100vh;
   display: flex;
-  flex-direction: column;
-  align-items: center;
   justify-content: center;
-  font-size: calc(10px + 2vmin);
+  padding: 32px;
+}
+
+.container {
+  width: 100%;
+  max-width: 600px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 24px;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+/* 제목 */
+.title {
+  font-size: 1.8rem;
+  margin-bottom: 20px;
+}
+
+.subtitle {
+  margin: 20px 0 10px;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+/* 입력 폼 */
+.form-group {
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.input {
+  padding: 10px 14px;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  background: #1e293b;
+  color: #fff;
+  font-size: 1rem;
+  margin-top: 6px;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 6px #3b82f6;
+}
+
+/* 버튼 */
+.btn-group {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+.btn {
+  flex: 1;
+  padding: 10px 16px;
+  background: #3b82f6;
+  border: none;
+  border-radius: 8px;
   color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 100px;
 }
 
-.App-link {
-  color: #61dafb;
+.btn:hover {
+  background: #2563eb;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.btn:disabled {
+  background: #475569;
+  cursor: not-allowed;
+}
+
+.btn.secondary {
+  background: #475569;
+}
+
+.btn.secondary:hover {
+  background: #334155;
+}
+
+/* 패널/칩 UI */
+.panel {
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid #334155;
+}
+
+.panel-title {
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.panel-subtitle {
+  font-weight: 600;
+  color: #9ca3af;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.chip {
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid #475569;
+  background: #0f172a;
+  color: #e5e7eb;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.chip.ok {
+  border-color: #22c55e;
+  background: #052e1a;
+  color: #86efac;
+}
+
+.chip.bad {
+  border-color: #ef4444;
+  background: #3b0a0a;
+  color: #fecaca;
+}
+
+/* 강조 pill */
+.pill.big {
+  display: inline-block;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.06);
+  border: 1px dashed #475569;
+  font-size: 1.05rem;
 }

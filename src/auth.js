@@ -1,31 +1,28 @@
 // src/auth.js
+// ───────────────────────────────────────────
+// 관리자 세션 & PIN 관리 (최소 구성)
+// AdminLogin, Badges 등에서 import 해서 씀
+// ───────────────────────────────────────────
 
-// 관리자 PIN 코드 (여기서 원하는 비밀번호로 바꿔도 됨)
+const ADMIN_STORAGE_KEY = "is_admin_session_v1";
+
+// 👉 원하는 핀으로 바꿔도 됨 (예: "1234")
 export const ADMIN_PIN = "jchi";
 
-// 세션 키
-const ADMIN_SESSION_KEY = "is_admin_session";
+export const isAdminSession = () =>
+  localStorage.getItem(ADMIN_STORAGE_KEY) === "1";
 
-// 현재 관리자 세션이 유효한지 확인
-export const isAdminSession = () => {
-  return localStorage.getItem(ADMIN_SESSION_KEY) === "true";
+export const setAdminSession = (on) => {
+  if (on) localStorage.setItem(ADMIN_STORAGE_KEY, "1");
+  else localStorage.removeItem(ADMIN_STORAGE_KEY);
 };
 
-// 관리자 로그인 (세션 true로 저장)
-export const loginAdmin = () => {
-  localStorage.setItem(ADMIN_SESSION_KEY, "true");
+// 올바른 핀인지 확인하고 세션 ON
+export const loginAdmin = (pin) => {
+  const ok = String(pin) === String(ADMIN_PIN);
+  setAdminSession(ok);
+  return ok;
 };
 
-// 관리자 로그아웃
-export const logoutAdmin = () => {
-  localStorage.removeItem(ADMIN_SESSION_KEY);
-};
-
-// 세션 강제 세팅 (boolean 값으로 직접 지정 가능)
-export const setAdminSession = (value) => {
-  if (value) {
-    localStorage.setItem(ADMIN_SESSION_KEY, "true");
-  } else {
-    localStorage.removeItem(ADMIN_SESSION_KEY);
-  }
-};
+// 세션 OFF
+export const logoutAdmin = () => setAdminSession(false);

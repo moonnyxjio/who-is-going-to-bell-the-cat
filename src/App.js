@@ -1,31 +1,23 @@
-import React from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-
-import Start from "./pages/Start";
-import Lesson from "./pages/Lesson";
+import { Routes, Route } from "react-router-dom";
+import Home from "./pages/Home";
 import Exam from "./pages/Exam";
-import Result from "./pages/Result";
 import Records from "./pages/Records";
 import Badges from "./pages/Badges";
 import AdminLogin from "./pages/AdminLogin";
 
-export default function App() {
+function App() {
   return (
-    <Router>
+    <div className="app">
       <Routes>
-        {/* 첫 화면 */}
-        <Route path="/" element={<Start />} />
-
-        {/* 학습 페이지 → 시험 페이지 → 결과 페이지 */}
-        <Route path="/lesson/:day" element={<Lesson />} />
+        <Route path="/" element={<Home />} />
+        <Route path="/learn/:day" element={<Learn />} />
         <Route path="/exam/:day" element={<Exam />} />
-        <Route path="/result" element={<Result />} />
-
-        {/* 기록, 뱃지, 관리자 */}
         <Route path="/records" element={<Records />} />
         <Route path="/badges" element={<Badges />} />
         <Route path="/admin" element={<AdminLogin />} />
       </Routes>
-    </Router>
+    </div>
   );
 }
+
+export default App;

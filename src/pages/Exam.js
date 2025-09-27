@@ -1,231 +1,187 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+// src/pages/Exam.js
+import React, { useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { QUESTIONS } from "../data";
+import { addRecord, uid, updateMasteryOnPerfect } from "../store";
+import useSpeech from "../hooks/useSpeech";
+import ProgressBar from "../components/ProgressBar";
+import Toast from "../components/Toast";
 
-// 소문자/기호 제거, 공백 정리
 const norm = (s) =>
-  (s || "")
-    .toLowerCase()
-    .replace(/[.,!?;:"'()]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-
+  s.toLowerCase().replace(/[.,!?;:"'()]/g, "").replace(/\s+/g, " ").trim();
 const tokenize = (s) => norm(s).split(" ").filter(Boolean);
 
 export default function Exam() {
   const nav = useNavigate();
-  const { day } = useParams(); // URL의 :day (예: 1, 2, 3, 4)
-  const { state } = useLocation(); // Home에서 넘겨준 { name }
-  const studentName = state?.name || "";
+  const { day } = useParams();
+  const { state } = useLocation(); // { name, date, questions?, originTotal? }
+  const name = state?.name || "";
+  const date = state?.date || new Date().toISOString().slice(0, 10);
 
-  // data.js가 day1, day2 처럼 되어 있다고 가정
-  const dayKey = useMemo(() => `day${day}`, [day]);
-  const list = useMemo(() => QUESTIONS[dayKey] || [], [dayKey]);
+  // 오답 재시험이면 state.questions, 아니면 전체
+  const baseList = useMemo(
+    () => (state?.questions?.length ? state.questions : (QUESTIONS[day] || [])),
+    [day, state?.questions]
+  );
+  const originTotal =
+    state?.originTotal || (QUESTIONS[day] || []).length || baseList.length;
 
   const [idx, setIdx] = useState(0);
-  const q = list[idx];
+  const [heard, setHeard] = useState("");          // 인식된 문장 (표시용)
+  const [colors, setColors] = useState([]);        // 각 토큰칸의 정오 표시
+  const [badgeToast, setBadgeToast] = useState(null);
 
-  // 말하기 관련
-  const [recognized, setRecognized] = useState(""); // 인식된 문장
-  const [checking, setChecking] = useState(false);  // 채점 중/후 상태 표시용 트리거
-  const [result, setResult] = useState(null);       // { wrongIdxs, expectedTokens, userTokens, score, total }
-  const recogRef = useRef(null);
+  const q = baseList[idx];
+  const expectedTokens = useMemo(
+    () => tokenize(q?.enChunks?.join(" ") || ""),
+    [q]
+  );
 
-  // 음성인식 준비
-  useEffect(() => {
-    const R = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!R) {
-      recogRef.current = null;
-      return;
-    }
-    const recog = new R();
-    recog.lang = "en-US";
-    recog.interimResults = false;
-    recog.maxAlternatives = 1;
-
-    recog.onresult = (e) => {
-      const text = e.results?.[0]?.[0]?.transcript || "";
-      setRecognized(text);
-      // 말하기가 끝나면 자동으로 채점
-      handleCheck(text);
-    };
-    recog.onerror = () => {
-      setRecognized("");
-    };
-    recogRef.current = recog;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // 말하기 시작
-  const handleSpeak = () => {
-    if (!recogRef.current) {
-      alert("이 브라우저는 음성 인식을 지원하지 않아요. Chrome을 사용해 주세요!");
-      return;
-    }
-    setRecognized("");
-    setResult(null);
-    setChecking(false);
-    try {
-      recogRef.current.start();
-    } catch (_) {
-      // Safari 등에서 start 중복 호출 예외 무시
-    }
-  };
-
-  // 채점: enChunks를 기준으로 토큰 비교
-  const handleCheck = (textMaybe) => {
-    const text = typeof textMaybe === "string" ? textMaybe : recognized;
-    const expectedTokens = tokenize((q?.enChunks || []).join(" "));
-    const userTokens = tokenize(text);
-    const wrongIdxs = [];
-
-    expectedTokens.forEach((exp, i) => {
-      const user = userTokens[i] || "";
-      if (user === exp) return;
-      // s/es 가벼운 오차 허용 (선택)
-      if (user + "s" === exp || user === exp + "s") return;
-      wrongIdxs.push(i);
-    });
-
-    const score = expectedTokens.length - wrongIdxs.length;
-    setResult({
-      wrongIdxs,
-      expectedTokens,
-      userTokens,
-      score,
-      total: expectedTokens.length,
-    });
-    setChecking(true);
-  };
-
-  // 같은 문장 다시 시도
-  const handleRetry = () => {
-    setRecognized("");
-    setResult(null);
-    setChecking(false);
-    handleSpeak();
-  };
-
-  // 기록 저장
-  const saveRecord = () => {
-    if (!result) return;
-    const rec = {
-      type: "SPEAK",
-      name: studentName,
-      date: new Date().toISOString().slice(0, 10),
-      day: dayKey,
-      qid: q.id,
-      koChunks: q.koChunks,
-      enChunks: result.expectedTokens,
-      user: recognized,
-      userTokens: result.userTokens,
-      wrongIdxs: result.wrongIdxs,
-      score: result.score,
-      totalChunks: result.total,
-      ts: Date.now(),
-    };
-    const prev = JSON.parse(localStorage.getItem("records") || "[]");
-    localStorage.setItem("records", JSON.stringify([...prev, rec]));
-  };
-
-  // 다음 문장으로 이동 (기록 저장 후)
-  const handleNext = () => {
-    if (!result) {
-      alert("먼저 말하기를 눌러 채점해 주세요.");
-      return;
-    }
-    saveRecord();
-    if (idx < list.length - 1) {
-      setIdx(idx + 1);
-      setRecognized("");
-      setResult(null);
-      setChecking(false);
-    } else {
-      alert("🎉 오늘 학습/시험을 마쳤습니다!");
-      nav("/records", { state: { filter: { name: studentName, day: dayKey } } });
-    }
-  };
+  // 말하기 시작/종료 → 자동 채점
+  const { canUseSpeech, listening, start, stop, lastError } = useSpeech({
+    lang: "en-US",
+    interim: false,
+    onResult: (text) => {
+      setHeard(text);
+      autoScore(text);
+    },
+  });
 
   if (!q) {
     return (
       <div className="container">
-        <h1 className="title">문제가 없어요</h1>
-        <div className="btn-group">
-          <button className="btn" onClick={() => nav("/")}>
-            처음으로
-          </button>
-          <button className="btn secondary" onClick={() => nav("/records")}>
-            기록 보기
-          </button>
+        <div className="card">
+          <h2>문제가 없어요</h2>
+          <div className="nav">
+            <button className="btn" onClick={() => nav("/")}>처음으로</button>
+          </div>
         </div>
       </div>
     );
   }
 
+  // 정답 문장은 화면에 절대 출력하지 않는다.
+  // 대신 "토큰칸(■)"을 기대 토큰 개수만큼 그리고, 맞으면 초록, 틀리면 빨강으로 표시.
+  const autoScore = (text) => {
+    const userTokens = tokenize(text);
+    const colorArr = expectedTokens.map((tk, i) => {
+      const user = userTokens[i] || "";
+      const ok = user === tk || user + "s" === tk || user === tk + "s";
+      return ok; // true(초록) / false(빨강)
+    });
+    setColors(colorArr);
+  };
+
+  const handleNext = () => {
+    // 점수 저장 + 뱃지/숙련도
+    const userTokens = tokenize(heard);
+    const wrongIdxs = [];
+    expectedTokens.forEach((tk, i) => {
+      const user = userTokens[i] || "";
+      if (!(user === tk || user + "s" === tk || user === tk + "s")) wrongIdxs.push(i);
+    });
+    const score = expectedTokens.length - wrongIdxs.length;
+
+    const rec = {
+      id: uid(),
+      type: "SPEAK",
+      name, date, day,
+      qid: q.id,
+      koChunks: q.koChunks,
+      enChunks: expectedTokens,  // 저장은 하되 화면엔 노출하지 않음
+      full: q.full,
+      user: heard,
+      wrongIdxs,
+      totalChunks: expectedTokens.length,
+      score,
+      ts: Date.now(),
+    };
+    addRecord(rec);
+
+    // 완벽 정답이면 숙련도 → Day 뱃지 체크
+    if (wrongIdxs.length === 0) {
+      const granted = updateMasteryOnPerfect(name, day, q.id, originTotal);
+      if (granted) setBadgeToast(`🎉 ${name} — ${String(day).toUpperCase()} 뱃지 획득!`);
+    }
+
+    // 다음 문항
+    setHeard("");
+    setColors([]);
+    if (idx < baseList.length - 1) {
+      setIdx((i) => i + 1);
+    } else {
+      nav("/records", { state: { name, day } });
+    }
+  };
+
   return (
     <div className="container">
-      <h1 className="title">
-        문제 {idx + 1} / {list.length}
-      </h1>
+      <div className="card">
+        <h1 className="title">시험 · 문제 {idx + 1} / {baseList.length}</h1>
 
-      {/* 시험은 한글만 보여줌 */}
-      <p className="pill big">
-        {q.koChunks?.join(" / ")}
-      </p>
-
-      {/* 말하기 & 채점 */}
-      <div className="btn-group" style={{ marginTop: 12 }}>
-        <button className="btn" onClick={handleSpeak}>말하기</button>
-        <button className="btn secondary" onClick={() => handleCheck()}>채점하기</button>
-        <button className="btn secondary" onClick={handleRetry}>다시 말하기</button>
-        <button className="btn" onClick={handleNext}>다음 문장</button>
-      </div>
-
-      {/* 인식 결과 표시 */}
-      <div className="panel">
-        <div className="panel-title">인식된 문장</div>
-        <div className="panel-body">{recognized || <span className="muted">아직 인식된 문장이 없어요.</span>}</div>
-      </div>
-
-      {/* 채점 결과(토큰별 칩 비교) */}
-      {checking && result && (
-        <div className="panel">
-          <div className="panel-title">
-            채점 결과 · 점수 {result.score} / {result.total}
+        {/* 오답 재시험일 때만 진행률 바 */}
+        {state?.questions?.length ? (
+          <div style={{ margin: "6px 0 12px" }}>
+            <ProgressBar now={idx} total={baseList.length} />
           </div>
-          <div className="panel-subtitle">정답(영어 토큰)</div>
-          <div className="chips">
-            {result.expectedTokens.map((tok, i) => {
-              const wrong = result.wrongIdxs.includes(i);
-              return (
-                <span key={i} className={`chip ${wrong ? "bad" : "ok"}`}>
-                  {tok}
-                </span>
-              );
-            })}
-          </div>
+        ) : null}
 
-          <div className="panel-subtitle" style={{ marginTop: 8 }}>
-            학생 토큰
-          </div>
-          <div className="chips">
-            {result.userTokens.length ? (
-              result.userTokens.map((tok, i) => (
-                <span key={i} className="chip">
-                  {tok}
-                </span>
-              ))
-            ) : (
-              <span className="muted">토큰이 없어요.</span>
-            )}
-          </div>
+        {/* 한글 프롬프트만 노출 */}
+        <p className="yellow">{q.koChunks.join(" / ")}</p>
+
+        {/* 토큰칸(정답 비공개): 기대 토큰 개수만큼 네모칸을 그리고 정오색 표시 */}
+        <div className="row" style={{ gap: 6, flexWrap: "wrap", margin: "14px 0 8px" }}>
+          {expectedTokens.map((_, i) => (
+            <span
+              key={i}
+              style={{
+                display: "inline-block",
+                width: 16, height: 16, borderRadius: 4,
+                background: colors[i] === undefined
+                  ? "#2b3442" // 아직 미채점(회색)
+                  : colors[i]
+                  ? "rgba(34,197,94,.9)" // 초록
+                  : "rgba(239,68,68,.9)",   // 빨강
+              }}
+              title={`token ${i + 1}`}
+            />
+          ))}
         </div>
-      )}
 
-      <div className="btn-group" style={{ marginTop: 12 }}>
-        <button className="btn secondary" onClick={() => nav("/")}>처음으로</button>
-        <button className="btn secondary" onClick={() => nav("/records")}>기록 보기</button>
+        {/* 인식된 문장(학생 피드백용) – 입력창 제거, 단순 표시만 */}
+        <div
+          style={{
+            width: "100%", minHeight: 56, borderRadius: 12,
+            background: "#0b1420", border: "1px solid #243042",
+            padding: "12px 14px", color: "#cbd5e1", marginTop: 8
+          }}
+        >
+          {heard || <span style={{ opacity: .5 }}>말하기 버튼을 눌러 답하세요</span>}
+        </div>
+
+        {/* 마이크 컨트롤만 제공 (타이핑 제거) */}
+        <div className="nav">
+          {canUseSpeech ? (
+            listening
+              ? <button className="btn danger" onClick={stop}>정지</button>
+              : <button className="btn primary" onClick={() => { setHeard(""); setColors([]); start(); }}>말하기</button>
+          ) : (
+            <button className="btn danger" disabled>마이크를 사용할 수 없어요</button>
+          )}
+          <button className="btn" onClick={() => { setHeard(""); setColors([]); }}>다시 말하기</button>
+          <button className="btn" onClick={handleNext} disabled={!heard}>다음 문장</button>
+          <button className="btn" onClick={() => nav("/records", { state: { name, day } })}>기록 보기</button>
+        </div>
+
+        {/* 마이크 에러 표기(권한/HTTPS 등) */}
+        {lastError && (
+          <div style={{ marginTop: 8, color: "#ef4444", fontSize: 13 }}>
+            마이크 오류: {lastError}
+          </div>
+        )}
       </div>
+
+      {badgeToast && <Toast text={badgeToast} onDone={() => setBadgeToast(null)} />}
     </div>
   );
 }

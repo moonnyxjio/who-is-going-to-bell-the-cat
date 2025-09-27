@@ -152,3 +152,30 @@ body {
   border: 1px dashed #475569;
   font-size: 1.05rem;
 }
+
+.word-ok {
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: rgba(34,197,94,.15);
+  color: #22c55e;
+  font-weight: 700;
+}
+.word-bad {
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: rgba(239,68,68,.15);
+  color: #ef4444;
+  font-weight: 700;
+}
+.chip {
+  background:#161f2b;
+  color:#cbd5e1;
+  border:1px solid #2b3442;
+  border-radius:12px;
+  padding:8px 12px;
+  cursor:pointer;
+}
+.chip:hover { filter: brightness(1.1); }
+
+/* 버튼 줄바꿈 시 간격 */
+.nav { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }

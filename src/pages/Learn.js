@@ -1,61 +1,96 @@
 // src/pages/Learn.js
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { QUESTIONS } from "../data";
-import { speak, stopSpeak } from "../tts";
+import useSpeech from "../hooks/useSpeech";
+import { speakSlow, speakVerySlow } from "../lib/tts";
+
+const norm = (s) =>
+  s.toLowerCase().replace(/[.,!?;:"'()]/g, "").replace(/\s+/g, " ").trim();
+const tokenize = (s) => norm(s).split(" ").filter(Boolean);
 
 export default function Learn() {
-  const { day } = useParams();
   const nav = useNavigate();
-  const { state } = useLocation();
-  const [idx, setIdx] = useState(0);
+  const { day } = useParams();
+  const { state } = useLocation(); // { name, date }
 
   const list = useMemo(() => QUESTIONS[day] || [], [day]);
-  const q = list[idx];
+  const [idx, setIdx] = useState(0);
+  const [ans, setAns] = useState("");
 
-  const name = state?.name || sessionStorage.getItem("name") || "";
-  const date = state?.date || sessionStorage.getItem("date") || new Date().toISOString().slice(0, 10);
+  const q = list[idx];
+  const expectedTokens = useMemo(() => tokenize(q?.enChunks?.join(" ") || ""), [q]);
+
+  // 말하기(연습) → 인식 결과 ans에 반영
+  const { canUseSpeech, listening, start, stop } = useSpeech({
+    lang:"en-US",
+    onResult: (text) => setAns(text),
+  });
 
   if (!q) {
     return (
       <div className="container">
-        <div className="card"><h2>학습할 문장이 없어요.</h2></div>
+        <div className="card">
+          <h2>학습할 문장이 없어요</h2>
+          <div className="nav"><button className="btn" onClick={()=>nav("/")}>처음으로</button></div>
+        </div>
       </div>
     );
   }
 
-  const onListenChunk = (en) => speak(en, { rate: 0.95 });
-  const onListenAll = () => speak(q.full, { rate: 1 });
-  const onListenSlow = () => speak(q.full, { rate: 0.8 });
-  const onNext = () => { stopSpeak(); setIdx(i => Math.min(i + 1, list.length - 1)); };
-  const onPrev = () => { stopSpeak(); setIdx(i => Math.max(i - 1, 0)); };
-  const startExam = () => {
-    stopSpeak();
-    nav(`/exam/${day}`, { state: { name, date, day } });
-  };
+  // 즉시 컬러링
+  const userTokens = tokenize(ans);
+  const colored = expectedTokens.map((tk,i)=>{
+    const user = userTokens[i] || "";
+    const ok = user===tk || user+"s"===tk || user===tk+"s";
+    return { tk, ok };
+  });
 
   return (
     <div className="container">
-      <div className="card" style={{ maxWidth: 1000 }}>
-        <h1 className="title">학습 · 문제 {idx + 1} / {list.length}</h1>
+      <div className="card">
+        <h1 className="title">학습 · 문제 {idx+1} / {list.length}</h1>
         <p className="yellow">{q.koChunks.join(" / ")}</p>
 
-        <div className="row" style={{ gap: 10, marginTop: 10 }}>
-          {q.enChunks.map((en, i) => (
-            <button key={i} className="btn" onClick={() => onListenChunk(en)}>청크{i + 1} 듣기</button>
+        {/* 청크 듣기(느리게) — 버튼은 청크별 하나 */}
+        <div className="row" style={{flexWrap:"wrap", gap:10, marginTop:10}}>
+          {q.enChunks.map((chunk, i)=>(
+            <button key={i} className="chip" onClick={()=>speakSlow(chunk)}>{chunk}</button>
           ))}
         </div>
 
-        <div className="row" style={{ gap: 10, marginTop: 10 }}>
-          <button className="btn" onClick={onListenAll}>전체 듣기</button>
-          <button className="btn" onClick={onListenSlow}>느리게 듣기</button>
-          <button className="btn" onClick={stopSpeak}>정지</button>
+        {/* 문장 전체 듣기 (느리게/아주 느리게) */}
+        <div className="row" style={{gap:10, marginTop:12}}>
+          <button className="btn" onClick={()=>speakSlow(q.full)}>전체(느리게)</button>
+          <button className="btn" onClick={()=>speakVerySlow(q.full)}>전체(아주 느리게)</button>
         </div>
 
-        <div className="nav" style={{ marginTop: 16 }}>
-          <button className="btn" onClick={onPrev} disabled={idx === 0}>이전</button>
-          <button className="btn" onClick={onNext} disabled={idx === list.length - 1}>다음</button>
-          <button className="btn primary" onClick={startExam}>시험 시작</button>
+        {/* 말하기(연습) → 인식 즉시 컬러링 */}
+        <div style={{marginTop:16}}>
+          <div className="row" style={{gap:10}}>
+            {canUseSpeech && (
+              listening
+                ? <button className="btn danger" onClick={stop}>정지</button>
+                : <button className="btn primary" onClick={start}>말하기(연습)</button>
+            )}
+            <button className="btn" onClick={()=>setAns("")}>지우기</button>
+          </div>
+
+          <div className="row" style={{gap:8, flexWrap:"wrap", marginTop:10}}>
+            {colored.map(({tk, ok}, i)=>(
+              <span key={i} className={ok ? "word-ok" : "word-bad"}>{tk}</span>
+            ))}
+          </div>
+        </div>
+
+        <div className="nav">
+          <button className="btn" disabled={idx===0} onClick={()=>{ setIdx(i=>i-1); setAns("");}}>이전</button>
+          {idx<list.length-1
+            ? <button className="btn" onClick={()=>{ setIdx(i=>i+1); setAns("");}}>다음</button>
+            : <button className="btn primary" onClick={()=>{
+                nav(`/exam/${day}`, { state: { name: state?.name||"", date: state?.date||new Date().toISOString().slice(0,10) } });
+              }}>시험 시작</button>
+          }
         </div>
       </div>
     </div>

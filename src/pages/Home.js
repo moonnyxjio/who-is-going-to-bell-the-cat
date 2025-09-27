@@ -32,7 +32,7 @@ export default function Start() {
   return (
     <div className="container">
       <div className="card" style={{ maxWidth: 1100 }}>
-        <h1 className="title">🎤 말하기 학습 & 시험</h1>
+        <h1 className="title">🎤 Who's going to bell the cat?</h1>
 
         {/* 입력 영역 */}
         <div className="row" style={{ gap: 16, alignItems: "center" }}>
